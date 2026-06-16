@@ -661,8 +661,7 @@
       viewBox: "0 0 1024 1024",
       iconFill: "#1296db",
       iconHTML: '<path d="M968.923429 512.804571A486.985143 486.985143 0 0 0 512.731429 969.142857h-1.828572A486.692571 486.692571 0 0 0 54.857143 512.731429v-1.828572A486.692571 486.692571 0 0 0 511.049143 54.930286h1.901714A487.058286 487.058286 0 0 0 969.142857 511.268571v1.609143h-0.219428z"/>',
-      spin: true,   // 保持阶段旋转（彩虹闪烁由 CSS 类驱动）
-      gemini: true  // Gemini 保持阶段：彩虹闪烁 + 旋转
+      gemini: true  // Gemini 保持阶段：彩虹闪烁 + 旋转（收缩/放松不旋转）
       // gemini 维持原缩放动画，不做形态变化
     }
   };
@@ -791,7 +790,6 @@
 
   function easeIn(t)  { return t * t; }
   function easeOut(t) { return 1 - (1 - t) * (1 - t); }
-  function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 
   function fmtTime(ms) {
     var s = Math.round(ms / 1000);
@@ -1054,8 +1052,9 @@
         var pulse = reducedMotion ? 0 : 0.025 * Math.sin(elapsed / 180);
         p = 1 - Math.abs(pulse);
         if (themeIsGemini()) {
-          // Gemini 保持阶段：图标持续旋转（按保持时长转两圈），与收缩末端无缝衔接
-          rot = reducedMotion ? 0 : training.rotBase + 180 + 720 * t;
+          // Gemini 保持阶段：图标从 0° 连续转两圈（整数圈），进出保持朝向不变、无跳变；
+          // 收缩/放松阶段不旋转，故不依赖 rotBase
+          rot = reducedMotion ? 0 : 720 * t;
         } else {
           rot = training.rotBase + 180; // 保持收缩末端的旋转角（仅 chatgpt 生效）
         }
@@ -1080,8 +1079,6 @@
         if (phase === "contract") {
           startPhase("hold");
         } else if (phase === "hold") {
-          // Gemini 保持阶段额外旋转 720°，累加进 rotBase 以保证 hold→release 旋转无跳变
-          if (themeIsGemini()) training.rotBase += 720;
           startPhase("release");
         } else {
           // 一组完成
