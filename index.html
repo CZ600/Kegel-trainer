@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f8f8f6">
+<title>提肛训练助手</title>
+<style>
+  :root {
+    --bg: #f8f8f6;
+    --accent: #d97757;
+    --accent-soft: rgba(217, 119, 87, 0.12);
+    --text: #1a1a1a;
+    --muted: #6b6b66;
+    --card: #ffffff;
+    --border: #e8e8e3;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  /* 桌面端：居中手机外壳 */
+  body {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 460px;
+    min-height: 100dvh;
+    background: var(--bg);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  @media (min-width: 600px) {
+    body { padding: 24px; background: #ececea; }
+    .app {
+      min-height: 860px;
+      max-height: 880px;
+      border-radius: 28px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--border);
+    }
+  }
+
+  /* 页面通用 */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: calc(24px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), visibility 220ms;
+    overflow-y: auto;
+  }
+  .screen.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  /* 通用按钮 */
+  .btn {
+    appearance: none;
+    border: none;
+    font: inherit;
+    cursor: pointer;
+    border-radius: 14px;
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 52px;
+    transition: background 180ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 180ms;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(217, 119, 87, 0.28);
+  }
+  .btn-primary:hover { background: #c96844; }
+  .btn-ghost {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: #f2f2ef; }
+  .btn .icon { width: 20px; height: 20px; }
+
+  /* ===== 首页 ===== */
+  .home-head {
+    text-align: center;
+    margin-bottom: 28px;
+    margin-top: 12px;
+  }
+  .home-head h1 {
+    font-size: clamp(24px, 6.5vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .home-head p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 4px 12px;
+  }
+
+  .mode-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .mode-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color 180ms var(--ease-out), background 180ms, box-shadow 180ms;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 72px;
+  }
+  .mode-card:active { transform: scale(0.99); }
+  .mode-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .mode-badge {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--bg);
+    display: grid; place-items: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .mode-card.selected .mode-badge { background: var(--accent); color: #fff; }
+  .mode-badge svg { width: 22px; height: 22px; }
+  .mode-info { flex: 1; }
+  .mode-name { font-weight: 600; font-size: 16px; }
+  .mode-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .mode-check {
+    width: 22px; height: 22px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 180ms;
+    flex-shrink: 0;
+  }
+  .mode-card.selected .mode-check { opacity: 1; }
+
+  /* 教程折叠 */
+  .tutorial { margin-bottom: 16px; }
+  .tutorial-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    cursor: pointer;
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .tutorial-toggle .chev { width: 20px; height: 20px; transition: transform 220ms var(--ease-out); color: var(--muted); }
+  .tutorial.open .chev { transform: rotate(180deg); }
+  .tutorial-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 280ms var(--ease-out);
+  }
+  .tutorial.open .tutorial-body { max-height: 600px; }
+  .tutorial-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    padding: 4px 18px 18px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .tutorial-content ol { padding-left: 18px; }
+  .tutorial-content li { margin: 6px 0; }
+  .tutorial-content strong { color: var(--text); }
+
+  .home-foot { margin-top: auto; padding-top: 16px; }
+
+  /* ===== 准备页 ===== */
+  .center-stack { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 20px; }
+  .prep-title { font-size: clamp(22px, 6vw, 28px); font-weight: 700; letter-spacing: -0.02em; }
+  .prep-sub { color: var(--muted); font-size: 15px; max-width: 280px; }
+  .prep-summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px 24px;
+    width: 100%;
+    max-width: 340px;
+    box-shadow: var(--shadow);
+  }
+  .prep-summary .label { font-size: 13px; color: var(--muted); }
+  .prep-summary .name { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .prep-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-top: 18px;
+    padding-top: 18px; border-top: 1px solid var(--border);
+  }
+  .prep-stat { text-align: center; }
+  .prep-stat .v { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .prep-stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ===== 倒计时 ===== */
+  .countdown-num {
+    font-size: clamp(96px, 38vw, 180px);
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .countdown-label { color: var(--muted); font-size: 18px; }
+  @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+  .countdown-num.pop { animation: pop 500ms var(--ease-out); }
+
+  /* ===== 训练页 ===== */
+  .train-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .train-progress-text { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .train-progress-text b { color: var(--text); font-size: 16px; }
+  .train-exit {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; width: 40px; height: 40px;
+    display: grid; place-items: center; cursor: pointer; color: var(--muted);
+  }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; width: 0%; transition: width 200ms linear; }
+
+  .train-stage {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 28px;
+  }
+  .icon-orbit {
+    width: clamp(180px, 56vw, 240px);
+    height: clamp(180px, 56vw, 240px);
+    position: relative;
+    display: grid; place-items: center;
+  }
+  .icon-orbit::before {
+    content: ""; position: absolute; inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft) 0%, transparent 65%);
+    transform: scale(1); transition: transform 200ms var(--ease-out);
+  }
+  .guide-icon {
+    width: 60%; height: 60%;
+    color: var(--accent);
+    transform: scale(0.6);
+    transform-origin: center;
+    will-change: transform;
+    position: relative;
+    z-index: 1;
+    transition: transform 60ms linear;
+  }
+  .stage-label {
+    font-size: clamp(28px, 8vw, 36px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    min-height: 1.2em;
+  }
+  .stage-count {
+    font-size: 15px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    min-height: 1.2em;
+  }
+
+  .train-controls { display: flex; gap: 12px; margin-top: 8px; }
+  .train-controls .btn { flex: 1; }
+
+  /* 完成页 */
+  .done-ring {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: grid; place-items: center;
+    animation: pop 600ms var(--ease-out);
+  }
+  .done-ring svg { width: 44px; height: 44px; }
+  .done-title { font-size: clamp(26px, 7vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
+  .done-stats {
+    display: flex; gap: 24px; justify-content: center; margin: 4px 0;
+  }
+  .done-stat .v { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .done-stat .k { font-size: 13px; color: var(--muted); }
+
+  /* 弹窗 */
+  .modal-mask {
+    position: absolute; inset: 0;
+    background: rgba(26, 26, 26, 0.4);
+    backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    opacity: 0; visibility: hidden;
+    transition: opacity 200ms var(--ease-out), visibility 200ms;
+    z-index: 50;
+  }
+  .modal-mask.show { opacity: 1; visibility: visible; }
+  .modal {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 24px;
+    width: 100%; max-width: 320px;
+    text-align: center;
+    transform: translateY(12px) scale(0.96);
+    transition: transform 220ms var(--ease-out);
+  }
+  .modal-mask.show .modal { transform: translateY(0) scale(1); }
+  .modal h3 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions .btn { flex: 1; padding: 12px; min-height: 46px; font-size: 15px; }
+
+  /* 暂停遮罩 */
+  .pause-overlay {
+    position: absolute; inset: 0;
+    background: rgba(248, 248, 246, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px;
+    opacity: 0; visibility: hidden;
+    transition: opacity 200ms var(--ease-out), visibility 200ms;
+    z-index: 40;
+  }
+  .pause-overlay.show { opacity: 1; visibility: visible; }
+  .pause-title { font-size: 24px; font-weight: 700; }
+  .pause-sub { color: var(--muted); font-size: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .screen, .modal, .modal-mask, .pause-overlay { transition-duration: 1ms; }
+    .guide-icon { transition: none !important; }
+    .countdown-num.pop, .done-ring { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== 首页 ========== -->
+  <section class="screen active" id="screen-home">
+    <div class="home-head">
+      <h1>提肛训练助手</h1>
+      <p>跟随节奏，每日几分钟</p>
+    </div>
+
+    <div class="section-title">选择模式</div>
+    <div class="mode-list" id="modeList"><!-- JS 渲染 --></div>
+
+    <div class="tutorial" id="tutorial">
+      <button class="tutorial-toggle" id="tutorialToggle" aria-expanded="false">
+        <span>教程介绍</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div class="tutorial-body">
+        <div class="tutorial-content">
+          <ol>
+            <li><strong>收</strong>：跟随图标放大，缓缓收紧盆底肌（像憋尿一样）。</li>
+            <li><strong>保持</strong>：图标停在最大处，持续发力不松懈。</li>
+            <li><strong>放</strong>：跟随图标缩小，缓慢放松肌肉。</li>
+            <li>每组 = 一次完整收放循环，全程用 <strong>鼻子呼吸</strong>，腹部放松。</li>
+            <li>建议每天 1 次，循序渐进，切勿憋气或过度用力。</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-foot">
+      <button class="btn btn-primary" id="btnGoPrep" style="width:100%">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        开始训练
+      </button>
+    </div>
+  </section>
+
+  <!-- ========== 准备页 ========== -->
+  <section class="screen" id="screen-prep">
+    <div class="center-stack">
+      <div>
+        <div class="prep-title" id="prepTitle">准备好了吗</div>
+        <div class="prep-sub">点击下方按钮，进入 5 秒准备倒计时</div>
+      </div>
+      <div class="prep-summary" id="prepSummary"><!-- JS 渲染 --></div>
+      <button class="btn btn-primary" id="btnStartCountdown" style="width:100%; max-width:340px;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        开始训练
+      </button>
+      <button class="btn btn-ghost" id="btnBackHome" style="min-height:44px; padding:10px 18px; font-size:14px;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        返回
+      </button>
+    </div>
+  </section>
+
+  <!-- ========== 5 秒倒计时 ========== -->
+  <section class="screen" id="screen-countdown">
+    <div class="center-stack">
+      <div class="countdown-label">即将开始，请做好准备</div>
+      <div class="countdown-num" id="countdownNum">5</div>
+      <button class="btn btn-ghost" id="btnCancelCountdown" style="min-height:44px; padding:10px 20px; font-size:14px;">取消</button>
+    </div>
+  </section>
+
+  <!-- ========== 训练页 ========== -->
+  <section class="screen" id="screen-train">
+    <div class="train-head">
+      <div class="train-progress-text">第 <b id="curSet">1</b> / <b id="totalSet">10</b> 组</div>
+      <button class="train-exit" id="btnEnd" aria-label="结束训练">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <div class="train-stage">
+      <div class="icon-orbit">
+        <svg class="guide-icon" id="guideIcon" viewBox="0 0 100 100" fill="currentColor"><path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"/></svg>
+      </div>
+      <div>
+        <div class="stage-label" id="stageLabel">准备</div>
+        <div class="stage-count" id="stageCount">&nbsp;</div>
+      </div>
+    </div>
+
+    <div class="train-controls">
+      <button class="btn btn-ghost" id="btnPause">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        <span id="pauseLabel">暂停</span>
+      </button>
+    </div>
+
+    <!-- 暂停遮罩 -->
+    <div class="pause-overlay" id="pauseOverlay">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+      <div class="pause-title">已暂停</div>
+      <div class="pause-sub">深呼吸，准备好后继续</div>
+      <button class="btn btn-primary" id="btnResume" style="min-width:180px;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        继续训练
+      </button>
+    </div>
+  </section>
+
+  <!-- ========== 完成页 ========== -->
+  <section class="screen" id="screen-done">
+    <div class="center-stack">
+      <div class="done-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <div>
+        <div class="done-title">恭喜完成</div>
+        <p class="prep-sub" id="doneSub" style="margin-top:8px;">坚持就是胜利，明天继续加油</p>
+      </div>
+      <div class="done-stats">
+        <div class="done-stat"><div class="v" id="doneSets">10</div><div class="k">完成组数</div></div>
+        <div class="done-stat"><div class="v" id="doneTime">--</div><div class="k">用时</div></div>
+      </div>
+      <button class="btn btn-primary" id="btnDoneHome" style="width:100%; max-width:320px;">返回首页</button>
+    </div>
+  </section>
+
+  <!-- ========== 结束确认弹窗 ========== -->
+  <div class="modal-mask" id="endModal">
+    <div class="modal">
+      <h3>结束本次训练？</h3>
+      <p>当前进度将不会被保存，且不会计入完成记录。</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="endCancel">继续训练</button>
+        <button class="btn btn-primary" id="endConfirm" style="background:#1a1a1a; box-shadow:none;">结束</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ===== 模式定义 =====
+  // contract: 收；hold: 保持；release: 放；sets: 组数
+  var MODES = [
+    { id: "beginner", name: "入门", desc: "适应节奏，建立感觉", contract: 3, hold: 3, release: 3, sets: 10 },
+    { id: "basic",    name: "基础", desc: "标准强度，日常练习", contract: 5, hold: 5, release: 5, sets: 15 },
+    { id: "advanced", name: "进阶", desc: "延长保持，强化耐力", contract: 5, hold: 10, release: 5, sets: 20 }
+  ];
+  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // 图标缩放边界：大=放松状态(1.0)，小点=收紧状态(0.12)
+  var SCALE_MAX = 1.0;
+  var SCALE_MIN = 0.12;
+
+  // ===== 状态 =====
+  var selectedMode = MODES[0];
+  var training = {
+    mode: null,
+    set: 0,            // 当前组（从1开始）
+    phase: "idle",     // 'contract' | 'hold' | 'release' | 'idle' | 'done'
+    phaseEndsAt: 0,    // 当前阶段结束的绝对时间戳
+    pausedRemaining: 0,// 暂停时记录剩余 ms
+    pausedAt: 0,
+    paused: false,
+    rafId: null,
+    startTime: 0,
+    totalMs: 0
+  };
+
+  // ===== DOM =====
+  var $ = function (id) { return document.getElementById(id); };
+  var screens = {
+    home: $("screen-home"),
+    prep: $("screen-prep"),
+    countdown: $("screen-countdown"),
+    train: $("screen-train"),
+    done: $("screen-done")
+  };
+  var guideIcon = $("guideIcon");
+  var stageLabel = $("stageLabel");
+  var stageCount = $("stageCount");
+  var curSetEl = $("curSet");
+  var totalSetEl = $("totalSet");
+  var progressFill = $("progressFill");
+  var pauseOverlay = $("pauseOverlay");
+  var endModal = $("endModal");
+
+  // ===== 工具 =====
+  function showScreen(name) {
+    Object.keys(screens).forEach(function (k) {
+      screens[k].classList.toggle("active", k === name);
+    });
+    // 切屏时确保遮罩关闭
+    pauseOverlay.classList.remove("show");
+    endModal.classList.remove("show");
+  }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) {
+      try { navigator.vibrate(pattern); } catch (e) {}
+    }
+  }
+
+  function easeIn(t)  { return t * t; }
+  function easeOut(t) { return 1 - (1 - t) * (1 - t); }
+
+  function fmtTime(ms) {
+    var s = Math.round(ms / 1000);
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m > 0 ? (m + "分" + r + "秒") : (r + "秒");
+  }
+
+  function setIconScale(s) {
+    guideIcon.style.transform = "scale(" + s.toFixed(3) + ")";
+  }
+
+  // ===== 渲染模式列表 =====
+  function renderModes() {
+    var list = $("modeList");
+    list.innerHTML = "";
+    MODES.forEach(function (m) {
+      var card = document.createElement("div");
+      card.className = "mode-card" + (m.id === selectedMode.id ? " selected" : "");
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.innerHTML =
+        '<div class="mode-badge">' + badgeSVG(m.id) + '</div>' +
+        '<div class="mode-info">' +
+          '<div class="mode-name">' + m.name + '</div>' +
+          '<div class="mode-meta">' + m.contract + '/' + m.hold + '/' + m.release + ' 秒 · ' + m.sets + ' 组</div>' +
+        '</div>' +
+        '<svg class="mode-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      var select = function () {
+        selectedMode = m;
+        renderModes();
+      };
+      card.addEventListener("click", select);
+      card.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(); }
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function badgeSVG(id) {
+    // 不同模式用不同 Lucide 图标区分难度
+    if (id === "beginner") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
+    if (id === "basic") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>';
+  }
+
+  // ===== 教程折叠 =====
+  var tutorial = $("tutorial");
+  $("tutorialToggle").addEventListener("click", function () {
+    var open = tutorial.classList.toggle("open");
+    this.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  // ===== 首页 -> 准备页 =====
+  $("btnGoPrep").addEventListener("click", function () {
+    renderPrep();
+    showScreen("prep");
+  });
+
+  function renderPrep() {
+    var m = selectedMode;
+    var totalSec = (m.contract + m.hold + m.release) * m.sets;
+    $("prepSummary").innerHTML =
+      '<div class="label">训练模式</div>' +
+      '<div class="name">' + m.name + '</div>' +
+      '<div class="prep-stats">' +
+        '<div class="prep-stat"><div class="v">' + m.contract + 's</div><div class="k">收</div></div>' +
+        '<div class="prep-stat"><div class="v">' + m.hold + 's</div><div class="k">保持</div></div>' +
+        '<div class="prep-stat"><div class="v">' + m.release + 's</div><div class="k">放</div></div>' +
+        '<div class="prep-stat"><div class="v">' + m.sets + '</div><div class="k">组数</div></div>' +
+      '</div>';
+    var mins = Math.floor(totalSec / 60);
+    var secs = totalSec % 60;
+    $("prepTitle").textContent = "准备好了吗";
+  }
+
+  $("btnBackHome").addEventListener("click", function () { showScreen("home"); });
+
+  // ===== 准备页 -> 5秒倒计时 =====
+  $("btnStartCountdown").addEventListener("click", startCountdown);
+
+  var cdNum = $("countdownNum");
+  var cdTimer = null;
+  function startCountdown() {
+    showScreen("countdown");
+    var n = 5;
+    cdNum.textContent = n;
+    cdNum.classList.remove("pop"); void cdNum.offsetWidth; cdNum.classList.add("pop");
+    cdTimer = setInterval(function () {
+      n--;
+      if (n <= 0) {
+        clearInterval(cdTimer);
+        cdTimer = null;
+        beginTraining();
+      } else {
+        cdNum.textContent = n;
+        cdNum.classList.remove("pop"); void cdNum.offsetWidth; cdNum.classList.add("pop");
+        vibrate(20);
+      }
+    }, 1000);
+  }
+
+  $("btnCancelCountdown").addEventListener("click", function () {
+    if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+    showScreen("home");
+  });
+
+  // ===== 训练核心 =====
+  function beginTraining() {
+    var m = selectedMode;
+    training.mode = m;
+    training.set = 1;
+    training.paused = false;
+    training.startTime = Date.now();
+    training.totalMs = (m.contract + m.hold + m.release) * m.sets * 1000;
+    curSetEl.textContent = "1";
+    totalSetEl.textContent = m.sets;
+    setIconScale(SCALE_MAX);
+    stageLabel.textContent = "收";
+    stageCount.textContent = m.contract + " 秒";
+    showScreen("train");
+    setPaused(false);
+    vibrate(30);
+    startPhase("contract");
+  }
+
+  function startPhase(phase) {
+    var m = training.mode;
+    training.phase = phase;
+    var dur;
+    if (phase === "contract")      { dur = m.contract * 1000; stageLabel.textContent = "收";   vibrate(30); }
+    else if (phase === "hold")     { dur = m.hold    * 1000; stageLabel.textContent = "保持"; vibrate([40, 50, 40]); }
+    else if (phase === "release")  { dur = m.release * 1000; stageLabel.textContent = "放";   vibrate(30); }
+    training.phaseEndsAt = Date.now() + dur;
+    training.pausedRemaining = dur;
+    runLoop();
+  }
+
+  function runLoop() {
+    if (training.rafId) cancelAnimationFrame(training.rafId);
+    var m = training.mode;
+
+    function tick() {
+      if (training.paused) { return; }
+      var now = Date.now();
+      var remain = training.phaseEndsAt - now;
+      var phase = training.phase;
+      var phaseDur = (phase === "contract" ? m.contract : phase === "hold" ? m.hold : m.release) * 1000;
+      var elapsed = phaseDur - remain;
+      var t = Math.max(0, Math.min(1, elapsed / phaseDur));
+
+      // 倒计时文字
+      stageCount.textContent = Math.max(0, Math.ceil(remain / 1000)) + " 秒";
+
+      // 图标缩放：收=大→小点(收紧)，保持=维持小点，放=小点→大(放松)
+      if (phase === "contract") {
+        // 大 → 小点，ease-in（越收越慢，便于在末端稳住收紧感）
+        setIconScale(reducedMotion ? SCALE_MIN : (SCALE_MAX - (SCALE_MAX - SCALE_MIN) * easeOut(t)));
+      } else if (phase === "hold") {
+        // 维持小点（收紧状态），加轻微脉动反馈持续发力
+        var pulse = reducedMotion ? 0 : 0.015 * Math.sin(elapsed / 180);
+        setIconScale(SCALE_MIN + pulse);
+      } else if (phase === "release") {
+        // 小点 → 大，ease-out（先快放后舒缓）
+        setIconScale(reducedMotion ? SCALE_MAX : (SCALE_MIN + (SCALE_MAX - SCALE_MIN) * easeOut(t)));
+      }
+
+      // 总进度
+      var perSetMs = (m.contract + m.hold + m.release) * 1000;
+      var elapsedTotal = (training.set - 1) * perSetMs + (elapsed > 0 ? elapsed : 0);
+      var pct = Math.min(100, (elapsedTotal / training.totalMs) * 100);
+      progressFill.style.width = pct + "%";
+
+      if (remain <= 0) {
+        // 阶段结束
+        if (phase === "contract") {
+          startPhase("hold");
+        } else if (phase === "hold") {
+          startPhase("release");
+        } else {
+          // 一组完成
+          if (training.set >= m.sets) {
+            finishTraining();
+          } else {
+            training.set++;
+            curSetEl.textContent = training.set;
+            vibrate([30, 60, 30]);
+            startPhase("contract");
+          }
+        }
+        return;
+      }
+      training.rafId = requestAnimationFrame(tick);
+    }
+
+    training.rafId = requestAnimationFrame(tick);
+  }
+
+  function setPaused(p) {
+    training.paused = p;
+    if (p) {
+      // 记录剩余
+      training.pausedAt = Date.now();
+      training.pausedRemaining = Math.max(0, training.phaseEndsAt - training.pausedAt);
+      if (training.rafId) { cancelAnimationFrame(training.rafId); training.rafId = null; }
+      pauseOverlay.classList.add("show");
+      $("pauseLabel").textContent = "继续";
+      $("btnPause").querySelector("svg").innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+    } else {
+      // 恢复：把阶段结束时间往后推
+      if (training.pausedAt) {
+        training.phaseEndsAt = Date.now() + training.pausedRemaining;
+        training.pausedAt = 0;
+      }
+      pauseOverlay.classList.remove("show");
+      $("pauseLabel").textContent = "暂停";
+      $("btnPause").querySelector("svg").innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      runLoop();
+    }
+  }
+
+  $("btnPause").addEventListener("click", function () { setPaused(!training.paused); });
+  $("btnResume").addEventListener("click", function () { setPaused(false); });
+
+  // ===== 结束 =====
+  $("btnEnd").addEventListener("click", function () {
+    if (training.phase === "done") return;
+    setPaused(true);
+    endModal.classList.add("show");
+  });
+  $("endCancel").addEventListener("click", function () {
+    endModal.classList.remove("show");
+    setPaused(false);
+  });
+  $("endConfirm").addEventListener("click", function () {
+    endModal.classList.remove("show");
+    if (training.rafId) { cancelAnimationFrame(training.rafId); training.rafId = null; }
+    training.phase = "idle";
+    // 提前结束：直接回首页，无恭喜页
+    showScreen("home");
+  });
+
+  function finishTraining() {
+    if (training.rafId) { cancelAnimationFrame(training.rafId); training.rafId = null; }
+    training.phase = "done";
+    setIconScale(1);
+    progressFill.style.width = "100%";
+    stageLabel.textContent = "完成";
+    stageCount.textContent = "";
+    vibrate([40, 80, 40, 80, 80]);
+    var used = Date.now() - training.startTime;
+    $("doneSets").textContent = training.mode.sets;
+    $("doneTime").textContent = fmtTime(used);
+    setTimeout(function () { showScreen("done"); }, 500);
+  }
+
+  $("btnDoneHome").addEventListener("click", function () { showScreen("home"); });
+
+  // ===== 初始化 =====
+  renderModes();
+})();
+</script>
+</body>
+</html>
