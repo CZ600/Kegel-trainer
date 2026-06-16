@@ -643,8 +643,8 @@
       viewBox: "0 0 100 100",
       iconFill: "currentColor",
       iconHTML: '<path id="morphPath" d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"/>',
-      // 收紧终态：圆心(50,50)的小圆 + 十二芒星（星芒很短），由 starDotPath 动态生成
-      morphTarget: 'starDot:50,50,7.69,4.62,12',
+      // 收紧终态：圆心(50,50) 的十二芒星（芒尖外径与原外形等大 = 12.31，谷底 6.5 让星体更饱满、芒更短），由 starDotPath 动态生成
+      morphTarget: 'starDot:50,50,6.5,5.81,12',
       // 形态变化主题的全局缩放：使放松态直径达原 130%（纯缩放主题改 SCALE_MAX）
       scaleMult: 1.3,
       morph: true
@@ -802,7 +802,7 @@
   function starDotPath(cx, cy, rInner, spikeLen, points) {
     var n = points || 12;
     var tipR = rInner + spikeLen;
-    var round = 0.5; // 芒尖圆角占比：0=尖锐，越接近 1 越圆润（取值 0~1）
+    var round = 0.3; // 芒尖圆角占比：0=尖锐，越接近 1 越圆润（取值 0~1）；压低让 12 芒星轮廓更清晰
 
     // 顶点序列：tip 与 valley 交替（每个 tip 紧跟其右侧 valley）
     var pts = [];
@@ -862,9 +862,11 @@
 
   // 设置图标进度 p：0 = 完全放松(图标原形)，1 = 完全收紧
   // rot = 旋转角度（度），仅旋转主题使用，默认 0
-  function setIconProgress(p, rot) {
+  // pulseScale = 额外缩放因子（保持阶段的脉动反馈，默认 1）
+  function setIconProgress(p, rot, pulseScale) {
     p = Math.max(0, Math.min(1, p));
     rot = rot || 0;
+    if (pulseScale == null) pulseScale = 1;
 
     if (morphToTarget) {
       // Claude 形态变化主题：直接驱动 path 的 d，不旋转
@@ -879,9 +881,11 @@
           pathEl.setAttribute("d", morphToTarget(p));
         }
       }
-      // 形态变化主题统一施加全局缩放（放大整体图标）
+      // 形态变化主题统一施加全局缩放（放大整体图标），并叠加保持阶段的脉动；保持阶段星形自旋
       var m = THEMES[currentTheme] && THEMES[currentTheme].scaleMult ? THEMES[currentTheme].scaleMult : 1;
-      guideIcon.style.transform = "scale(" + m + ")";
+      guideIcon.style.transform = rot
+        ? "scale(" + (m * pulseScale).toFixed(4) + ") rotate(" + rot.toFixed(2) + "deg)"
+        : "scale(" + (m * pulseScale).toFixed(4) + ")";
     } else {
       // 纯缩放主题（chatgpt 缩放+旋转，gemini 仅缩放）
       var s = SCALE_MAX - (SCALE_MAX - SCALE_MIN) * p;
@@ -1039,34 +1043,52 @@
 
       // 图标进度 p：0=放松(图标原形)，1=收紧(目标形状)
       // 旋转：ChatGPT 在收缩/放松过程中带旋转，一组完整收缩→放松转一整圈
-      var p = 0, rot = 0;
+      var p = 0, rot = 0, pulseScale = 1;
+      var morphEasing = !!morphToTarget; // Claude 形态变化主题：照搬 claude-icon-morph.html 的缓动节奏
       if (phase === "contract") {
-        // 大 → 小点，ease-out（越收越慢，便于在末端稳住收紧感）
-        p = reducedMotion ? 1 : easeOut(t);
+        if (morphEasing) {
+          // 图标 → 星形：ease-in（先慢后快，像被收拢），对齐 morph 页收缩段
+          p = reducedMotion ? 1 : easeIn(t);
+        } else {
+          // 纯缩放主题：大 → 小点，ease-out（越收越慢，便于在末端稳住收紧感）
+          p = reducedMotion ? 1 : easeOut(t);
+        }
         if (themeSpins()) {
           // 收缩过程旋转半圈（累加基础角 + 0→180°），跨组无跳变
           rot = reducedMotion ? 0 : training.rotBase + 180 * easeOut(t);
         }
       } else if (phase === "hold") {
-        // 维持收紧状态（claude=目标形状，chatgpt/gemini=缩到最小），加轻微脉动反馈持续发力
-        var pulse = reducedMotion ? 0 : 0.025 * Math.sin(elapsed / 180);
-        p = 1 - Math.abs(pulse);
+        // 保持纯净终态（claude=正立 12 芒星，chatgpt/gemini=缩到最小）：p 恒为 1，
+        // 不经 flubber 插值，避免 claude 星形被插值带偏朝向；pulseScale=1 与收缩末尾一致，零跳变
+        p = 1;
+        pulseScale = 1;
         if (themeIsGemini()) {
           // Gemini 保持阶段：图标从 0° 连续转两圈（整数圈），进出保持朝向不变、无跳变；
           // 收缩/放松阶段不旋转，故不依赖 rotBase
           rot = reducedMotion ? 0 : 720 * t;
+        } else if (morphToTarget) {
+          // Claude 保持阶段：12 重对称星形旋转不可见，且每帧重绘会引入芒尖光栅化抖动，
+          // 故保持静止（rot=0），改用缩放呼吸提供生命感；
+          // 整数个呼吸周期使 sin 在 t=0/t=1 归零，pulseScale 进出均为 1，
+          // 与收缩末尾/放松开头零跳变
+          if (reducedMotion) {
+            pulseScale = 1;
+          } else {
+            var breaths = Math.max(1, Math.round(m.hold / 1.2)); // 约每 1.2s 一次呼吸
+            pulseScale = 1 + 0.2 * Math.sin(breaths * Math.PI * t);
+          }
         } else {
           rot = training.rotBase + 180; // 保持收缩末端的旋转角（仅 chatgpt 生效）
         }
       } else if (phase === "release") {
-        // 小点 → 大，ease-out（先快放后舒缓）
+        // 小点/星形 → 大，ease-out（先快放后舒缓）；morph 页展开段同样用 easeOut，故两类主题一致
         p = reducedMotion ? 0 : 1 - easeOut(t);
         if (themeSpins()) {
           // 放松过程再转半圈（累加基础角 + 180→360°），整组完成一整圈
           rot = reducedMotion ? 0 : training.rotBase + 180 + 180 * easeOut(t);
         }
       }
-      setIconProgress(p, rot);
+      setIconProgress(p, rot, pulseScale);
 
       // 总进度
       var perSetMs = (m.contract + m.hold + m.release) * 1000;
