@@ -510,7 +510,7 @@
     <div class="center-stack">
       <div>
         <div class="prep-title" id="prepTitle">准备好了吗</div>
-        <div class="prep-sub">点击下方按钮，进入 5 秒准备倒计时</div>
+        <div class="prep-sub">点击下方按钮，进入 3 秒准备倒计时</div>
       </div>
       <div class="prep-summary" id="prepSummary"><!-- JS 渲染 --></div>
       <button class="btn btn-primary" id="btnStartCountdown" style="width:100%; max-width:340px;">
@@ -524,11 +524,11 @@
     </div>
   </section>
 
-  <!-- ========== 5 秒倒计时 ========== -->
+  <!-- ========== 3 秒倒计时 ========== -->
   <section class="screen" id="screen-countdown">
     <div class="center-stack">
       <div class="countdown-label">即将开始，请做好准备</div>
-      <div class="countdown-num" id="countdownNum">5</div>
+      <div class="countdown-num" id="countdownNum">3</div>
       <button class="btn btn-ghost" id="btnCancelCountdown" style="min-height:44px; padding:10px 20px; font-size:14px;">取消</button>
     </div>
   </section>
@@ -802,14 +802,14 @@
 
   $("btnBackHome").addEventListener("click", function () { showScreen("home"); });
 
-  // ===== 准备页 -> 5秒倒计时 =====
+  // ===== 准备页 -> 3秒倒计时 =====
   $("btnStartCountdown").addEventListener("click", startCountdown);
 
   var cdNum = $("countdownNum");
   var cdTimer = null;
   function startCountdown() {
     showScreen("countdown");
-    var n = 5;
+    var n = 3;
     cdNum.textContent = n;
     cdNum.classList.remove("pop"); void cdNum.offsetWidth; cdNum.classList.add("pop");
     cdTimer = setInterval(function () {
