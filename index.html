@@ -5,20 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f8f8f6">
 <title>提肛训练助手</title>
+<script>
+  // 提前应用主题，避免首屏闪烁
+  (function () {
+    try {
+      var t = localStorage.getItem("kegel-theme");
+      if (!t || !["claude", "chatgpt", "gemini"].includes(t)) t = "claude";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "claude");
+    }
+  })();
+</script>
 <style>
   :root {
-    --bg: #f8f8f6;
-    --accent: #d97757;
-    --accent-soft: rgba(217, 119, 87, 0.12);
-    --text: #1a1a1a;
-    --muted: #6b6b66;
-    --card: #ffffff;
-    --border: #e8e8e3;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
+  }
+
+  /* === 主题：Claude（默认，奶油 + 橙）=== */
+  [data-theme="claude"] {
+    --bg: #f8f8f6;
+    --accent: #d97757;
+    --accent-rgb: 217, 119, 87;
+    --accent-soft: rgba(217, 119, 87, 0.12);
+    --text: #1a1a1a;
+    --muted: #6b6b66;
+    --card: #ffffff;
+    --border: #e8e8e3;
+  }
+
+  /* === 主题：ChatGPT（浅灰白 + 绿）=== */
+  [data-theme="chatgpt"] {
+    --bg: #f7f7f8;
+    --accent: #10a37f;
+    --accent-rgb: 16, 163, 127;
+    --accent-soft: rgba(16, 163, 127, 0.12);
+    --text: #0d0d0d;
+    --muted: #5d5d63;
+    --card: #ffffff;
+    --border: #e5e5e5;
+  }
+
+  /* === 主题：Gemini（浅蓝白 + 蓝紫渐变）=== */
+  [data-theme="gemini"] {
+    --bg: #f4f6fc;
+    --accent: #4285f4;
+    --accent-rgb: 66, 133, 244;
+    --accent-soft: rgba(66, 133, 244, 0.14);
+    --text: #1b1c1f;
+    --muted: #5f6368;
+    --card: #ffffff;
+    --border: #dde2ee;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -103,7 +145,7 @@
   .btn-primary {
     background: var(--accent);
     color: #fff;
-    box-shadow: 0 4px 14px rgba(217, 119, 87, 0.28);
+    box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.28);
   }
   .btn-primary:hover { background: #c96844; }
   .btn-ghost {
@@ -374,6 +416,48 @@
   .pause-title { font-size: 24px; font-weight: 700; }
   .pause-sub { color: var(--muted); font-size: 14px; }
 
+  /* ===== 主题切换器 ===== */
+  .theme-switcher {
+    display: flex;
+    gap: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 4px;
+    margin: 0 auto 20px;
+    width: fit-content;
+  }
+  .theme-chip {
+    appearance: none; border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 99px;
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 180ms var(--ease-out), color 180ms;
+    min-height: 36px;
+  }
+  .theme-chip .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .theme-chip.active { background: var(--accent); color: #fff; }
+  .theme-chip:not(.active):hover { background: rgba(0, 0, 0, 0.04); }
+
+  /* Gemini 渐变专用（图标与色点） */
+  .gemini-gradient {
+    background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  [data-theme="gemini"] .guide-icon.gemini-icon {
+    fill: url(#geminiGrad);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .screen, .modal, .modal-mask, .pause-overlay { transition-duration: 1ms; }
     .guide-icon { transition: none !important; }
@@ -384,11 +468,33 @@
 <body>
 <div class="app">
 
+<!-- SVG 渐变定义（Gemini 图标用） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="geminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285f4"></stop>
+      <stop offset="50%" stop-color="#9b72cb"></stop>
+      <stop offset="100%" stop-color="#d96570"></stop>
+    </linearGradient>
+  </defs>
+</svg>
   <!-- ========== 首页 ========== -->
   <section class="screen active" id="screen-home">
     <div class="home-head">
       <h1>提肛训练助手</h1>
       <p>跟随节奏，每日几分钟</p>
+    </div>
+
+    <div class="theme-switcher" id="themeSwitcher" role="tablist" aria-label="选择主题风格">
+      <button class="theme-chip active" data-theme="claude" role="tab" aria-selected="true">
+        <span class="dot" style="background:#d97757"></span>Claude
+      </button>
+      <button class="theme-chip" data-theme="chatgpt" role="tab" aria-selected="false">
+        <span class="dot" style="background:#10a37f"></span>ChatGPT
+      </button>
+      <button class="theme-chip" data-theme="gemini" role="tab" aria-selected="false">
+        <span class="dot gemini-gradient" style="background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570)"></span>Gemini
+      </button>
     </div>
 
     <div class="section-title">选择模式</div>
@@ -460,7 +566,7 @@
 
     <div class="train-stage">
       <div class="icon-orbit">
-        <svg class="guide-icon" id="guideIcon" viewBox="0 0 100 100" fill="currentColor"><path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"/></svg>
+        <svg class="guide-icon" id="guideIcon" viewBox="0 0 100 100"></svg>
       </div>
       <div>
         <div class="stage-label" id="stageLabel">准备</div>
@@ -530,11 +636,59 @@
     { id: "basic",    name: "基础", desc: "标准强度，日常练习", contract: 5, hold: 5, release: 5, sets: 15 },
     { id: "advanced", name: "进阶", desc: "延长保持，强化耐力", contract: 5, hold: 10, release: 5, sets: 20 }
   ];
+
+  // ===== 主题定义（配色 + 引导图标）=====
+  // 每个主题提供训练页缩放的引导图标 SVG 内部结构
+  var THEMES = {
+    claude: {
+      // Claude 星号（沿用原 logo path）
+      iconFill: "currentColor",
+      iconHTML: '<path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z"/>'
+    },
+    chatgpt: {
+      // ChatGPT 花瓣 logo（六瓣花造型，居中圆环）
+      iconFill: "currentColor",
+      iconHTML: '<path d="M50 8c5.2 0 9.6 3.6 10.8 8.6 1.8-1 3.9-1.4 6-1 4.8.8 8.3 4.7 8.7 9.5.3 3.2-1 6.3-3.3 8.4 4.4 1.8 7.3 6.2 6.9 11.1-.4 4.8-4 8.8-8.8 9.6.9 2.1 1 4.5.3 6.7-1.5 4.6-6 7.7-10.9 7.4-2.3-.1-4.4-1-6.1-2.4-1.3 4.9-5.7 8.4-10.8 8.4S36.7 81.5 35.4 76.6c-1.7 1.4-3.8 2.3-6.1 2.4-4.9.3-9.4-2.8-10.9-7.4-.7-2.2-.6-4.6.3-6.7-4.8-.8-8.4-4.8-8.8-9.6-.4-4.9 2.5-9.3 6.9-11.1-2.3-2.1-3.6-5.2-3.3-8.4.4-4.8 3.9-8.7 8.7-9.5 2.1-.4 4.2 0 6 1C40.4 11.6 44.8 8 50 8z" opacity="0.92"/><circle cx="50" cy="50" r="13" fill="#fff"/><circle cx="50" cy="50" r="13" fill="none" stroke="currentColor" stroke-width="3"/>'
+    },
+    gemini: {
+      // Gemini 四芒星（sparkle），用渐变填充
+      iconFill: "url(#geminiGrad)",
+      iconHTML: '<path d="M50 6c1.6 0 3 1 3.5 2.5C57 22 64 29 77.5 32.5c1.5.5 2.5 1.9 2.5 3.5s-1 3-2.5 3.5C64 43 57 50 53.5 63.5 53 65 51.6 66 50 66s-3-1-3.5-2.5C43 50 36 43 22.5 39.5 21 39 20 37.6 20 36s1-3 2.5-3.5C36 29 43 22 46.5 8.5 47 7 48.4 6 50 6zM72 60c.9 0 1.7.6 2 1.5 1.2 4 3.3 6.1 7.3 7.3.9.3 1.5 1.1 1.5 2s-.6 1.7-1.5 2c-4 1.2-6.1 3.3-7.3 7.3-.3.9-1.1 1.5-2 1.5s-1.7-.6-2-1.5c-1.2-4-3.3-6.1-7.3-7.3-.9-.3-1.5-1.1-1.5-2s.6-1.7 1.5-2c4-1.2 6.1-3.3 7.3-7.3.3-.9 1.1-1.5 2-1.5z"/>'
+    }
+  };
   var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // 图标缩放边界：大=放松状态(1.0)，小点=收紧状态(0.12)
   var SCALE_MAX = 1.0;
   var SCALE_MIN = 0.12;
+
+  // 当前主题（从 localStorage 恢复，默认 claude）
+  var currentTheme = "claude";
+  try {
+    var saved = localStorage.getItem("kegel-theme");
+    if (saved && THEMES[saved]) currentTheme = saved;
+  } catch (e) {}
+
+  function applyTheme(theme) {
+    if (!THEMES[theme]) theme = "claude";
+    currentTheme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("kegel-theme", theme); } catch (e) {}
+
+    // 切换训练引导图标
+    var t = THEMES[theme];
+    guideIcon.setAttribute("fill", t.iconFill);
+    guideIcon.classList.toggle("gemini-icon", theme === "gemini");
+    guideIcon.innerHTML = t.iconHTML;
+
+    // 同步切换器高亮
+    var chips = document.querySelectorAll(".theme-chip");
+    for (var i = 0; i < chips.length; i++) {
+      var active = chips[i].getAttribute("data-theme") === theme;
+      chips[i].classList.toggle("active", active);
+      chips[i].setAttribute("aria-selected", active ? "true" : "false");
+    }
+  }
 
   // ===== 状态 =====
   var selectedMode = MODES[0];
@@ -846,7 +1000,15 @@
 
   $("btnDoneHome").addEventListener("click", function () { showScreen("home"); });
 
+  // ===== 主题切换器事件 =====
+  document.getElementById("themeSwitcher").addEventListener("click", function (e) {
+    var chip = e.target.closest(".theme-chip");
+    if (!chip) return;
+    applyTheme(chip.getAttribute("data-theme"));
+  });
+
   // ===== 初始化 =====
+  applyTheme(currentTheme);
   renderModes();
 })();
 </script>
