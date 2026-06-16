@@ -116,7 +116,9 @@
     transform: translateY(8px);
     transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), visibility 220ms;
     overflow-y: auto;
+    scrollbar-width: none; /* Firefox：隐藏滚动条但保留滚动 */
   }
+  .screen::-webkit-scrollbar { display: none; } /* Chrome/Edge/Safari */
   .screen.active {
     opacity: 1;
     visibility: visible;
@@ -487,10 +489,10 @@
       <div class="tutorial-body">
         <div class="tutorial-content">
           <ol>
-            <li><strong>收</strong>：跟随图标放大，缓缓收紧盆底肌（像憋尿一样）。</li>
+            <li><strong>收缩</strong>：跟随图标放大，缓缓收紧盆底肌（像憋尿一样）。</li>
             <li><strong>保持</strong>：图标停在最大处，持续发力不松懈。</li>
-            <li><strong>放</strong>：跟随图标缩小，缓慢放松肌肉。</li>
-            <li>每组 = 一次完整收放循环，全程用 <strong>鼻子呼吸</strong>，腹部放松。</li>
+            <li><strong>放松</strong>：跟随图标缩小，缓慢放松肌肉。</li>
+            <li>每组 = 一次完整收缩放松循环，全程用 <strong>鼻子呼吸</strong>，腹部放松。</li>
             <li>建议每天 1 次，循序渐进，切勿憋气或过度用力。</li>
           </ol>
         </div>
@@ -611,7 +613,7 @@
   "use strict";
 
   // ===== 模式定义 =====
-  // contract: 收；hold: 保持；release: 放；sets: 组数
+  // contract: 收缩；hold: 保持；release: 放松；sets: 组数
   var MODES = [
     { id: "beginner", name: "入门", desc: "适应节奏，建立感觉", contract: 3, hold: 3, release: 3, sets: 10 },
     { id: "basic",    name: "基础", desc: "标准强度，日常练习", contract: 5, hold: 5, release: 5, sets: 15 },
@@ -845,7 +847,7 @@
         '<div class="mode-badge">' + badgeSVG(m.id) + '</div>' +
         '<div class="mode-info">' +
           '<div class="mode-name">' + m.name + '</div>' +
-          '<div class="mode-meta">' + m.contract + '/' + m.hold + '/' + m.release + ' 秒 · ' + m.sets + ' 组</div>' +
+          '<div class="mode-meta">收缩' + m.contract + 's/保持' + m.hold + 's/放松' + m.release + 's · ' + m.sets + ' 组</div>' +
         '</div>' +
         '<svg class="mode-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       var select = function () {
@@ -887,9 +889,9 @@
       '<div class="label">训练模式</div>' +
       '<div class="name">' + m.name + '</div>' +
       '<div class="prep-stats">' +
-        '<div class="prep-stat"><div class="v">' + m.contract + 's</div><div class="k">收</div></div>' +
+        '<div class="prep-stat"><div class="v">' + m.contract + 's</div><div class="k">收缩</div></div>' +
         '<div class="prep-stat"><div class="v">' + m.hold + 's</div><div class="k">保持</div></div>' +
-        '<div class="prep-stat"><div class="v">' + m.release + 's</div><div class="k">放</div></div>' +
+        '<div class="prep-stat"><div class="v">' + m.release + 's</div><div class="k">放松</div></div>' +
         '<div class="prep-stat"><div class="v">' + m.sets + '</div><div class="k">组数</div></div>' +
       '</div>';
     var mins = Math.floor(totalSec / 60);
@@ -939,7 +941,7 @@
     curSetEl.textContent = "1";
     totalSetEl.textContent = m.sets;
     setIconProgress(0, 0);
-    stageLabel.textContent = "收";
+    stageLabel.textContent = "收缩";
     stageCount.textContent = m.contract + " 秒";
     showScreen("train");
     setPaused(false);
@@ -951,9 +953,9 @@
     var m = training.mode;
     training.phase = phase;
     var dur;
-    if (phase === "contract")      { dur = m.contract * 1000; stageLabel.textContent = "收";   vibrate(30); }
+    if (phase === "contract")      { dur = m.contract * 1000; stageLabel.textContent = "收缩"; vibrate(30); }
     else if (phase === "hold")     { dur = m.hold    * 1000; stageLabel.textContent = "保持"; vibrate([40, 50, 40]); }
-    else if (phase === "release")  { dur = m.release * 1000; stageLabel.textContent = "放";   vibrate(30); }
+    else if (phase === "release")  { dur = m.release * 1000; stageLabel.textContent = "放松"; vibrate(30); }
     training.phaseEndsAt = Date.now() + dur;
     training.pausedRemaining = dur;
     runLoop();
