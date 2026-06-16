@@ -340,7 +340,6 @@
     will-change: transform;
     position: relative;
     z-index: 1;
-    transition: transform 60ms linear;
   }
   .stage-label {
     font-size: clamp(28px, 8vw, 36px);
@@ -348,11 +347,13 @@
     letter-spacing: 0.04em;
     color: var(--text);
     min-height: 1.2em;
+    text-align: center;
   }
   .stage-count {
     font-size: 15px; color: var(--muted);
     font-variant-numeric: tabular-nums;
     min-height: 1.2em;
+    text-align: center;
   }
 
   .train-controls { display: flex; gap: 12px; margin-top: 8px; }
@@ -447,6 +448,7 @@
   }
   .theme-chip .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .theme-chip.active { background: var(--accent); color: #fff; }
+  .theme-chip.active .dot { display: none; }
   .theme-chip:not(.active):hover { background: rgba(0, 0, 0, 0.04); }
 
   @media (prefers-reduced-motion: reduce) {
@@ -938,6 +940,7 @@
     training.paused = false;
     training.startTime = Date.now();
     training.totalMs = (m.contract + m.hold + m.release) * m.sets * 1000;
+    training.rotBase = 0;
     curSetEl.textContent = "1";
     totalSetEl.textContent = m.sets;
     setIconProgress(0, 0);
@@ -984,20 +987,20 @@
         // 大 → 小点，ease-out（越收越慢，便于在末端稳住收紧感）
         p = reducedMotion ? 1 : easeOut(t);
         if (themeSpins()) {
-          // 收缩过程旋转半圈（0→180°）
-          rot = reducedMotion ? 0 : 180 * easeOut(t);
+          // 收缩过程旋转半圈（累加基础角 + 0→180°），跨组无跳变
+          rot = reducedMotion ? 0 : training.rotBase + 180 * easeOut(t);
         }
       } else if (phase === "hold") {
         // 维持收紧状态（claude=目标形状，chatgpt=缩到最小），加轻微脉动反馈持续发力
         var pulse = reducedMotion ? 0 : 0.025 * Math.sin(elapsed / 180);
         p = 1 - Math.abs(pulse);
-        rot = 180; // 保持收缩末端的旋转角（仅 chatgpt 生效）
+        rot = training.rotBase + 180; // 保持收缩末端的旋转角（仅 chatgpt 生效）
       } else if (phase === "release") {
         // 小点 → 大，ease-out（先快放后舒缓）
         p = reducedMotion ? 0 : 1 - easeOut(t);
         if (themeSpins()) {
-          // 放松过程再转半圈（180→360°），整组完成一整圈
-          rot = reducedMotion ? 0 : 180 + 180 * easeOut(t);
+          // 放松过程再转半圈（累加基础角 + 180→360°），整组完成一整圈
+          rot = reducedMotion ? 0 : training.rotBase + 180 + 180 * easeOut(t);
         }
       }
       setIconProgress(p, rot);
@@ -1022,6 +1025,7 @@
             training.set++;
             curSetEl.textContent = training.set;
             vibrate([30, 60, 30]);
+            training.rotBase += 360;  // 累加旋转基础角，跨组无跳变
             startPhase("contract");
           }
         }
