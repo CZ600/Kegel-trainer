@@ -342,17 +342,10 @@
     z-index: 1;
   }
 
-  /* Gemini 保持阶段：图标缩到最小，整体彩虹色渐变闪烁（hue-rotate 在蓝底上扫过整个色谱，
-     叠加 brightness/saturate 脉冲产生闪烁感；作用于 .icon-orbit 让图标与光晕同步变色）*/
-  @keyframes geminiRainbowSpin {
-    0%   { filter: hue-rotate(0deg)   saturate(1.3) brightness(1.0); }
-    25%  { filter: hue-rotate(90deg)  saturate(1.7) brightness(1.4); }
-    50%  { filter: hue-rotate(180deg) saturate(1.3) brightness(1.0); }
-    75%  { filter: hue-rotate(270deg) saturate(1.7) brightness(1.4); }
-    100% { filter: hue-rotate(360deg) saturate(1.3) brightness(1.0); }
-  }
-  .icon-orbit.gemini-hold { animation: geminiRainbowSpin 1.2s linear infinite; }
-  .icon-orbit.gemini-paused { animation-play-state: paused; }
+  /* Gemini 保持阶段：图标缩到最小后，一条彩虹色带在图标内部横向滑动。
+     色带由 SVG <linearGradient>（id=geminiRainbow，见 JS geminiRainbowDefs）提供，
+     通过 <animateTransform> 平移 gradientTransform 实现；fill 切换在 setGeminiHold 完成，
+     暂停在 pauseGeminiHold 用 svg.pauseAnimations() 控制 */
   .stage-label {
     font-size: clamp(28px, 8vw, 36px);
     font-weight: 700;
@@ -467,7 +460,8 @@
     .screen, .modal, .modal-mask, .pause-overlay { transition-duration: 1ms; }
     .guide-icon { transition: none !important; }
     .countdown-num.pop, .done-ring { animation: none; }
-    .icon-orbit.gemini-hold { animation: none; }
+    /* Gemini 彩虹色带：reducedMotion 时 geminiBandAnim 为空（不生成 <animateTransform>），
+       色带静止但仍呈现彩虹填色 */
   }
 </style>
 </head>
@@ -661,7 +655,7 @@
       viewBox: "0 0 1024 1024",
       iconFill: "#1296db",
       iconHTML: '<path d="M968.923429 512.804571A486.985143 486.985143 0 0 0 512.731429 969.142857h-1.828572A486.692571 486.692571 0 0 0 54.857143 512.731429v-1.828572A486.692571 486.692571 0 0 0 511.049143 54.930286h1.901714A487.058286 487.058286 0 0 0 969.142857 511.268571v1.609143h-0.219428z"/>',
-      gemini: true  // Gemini 保持阶段：彩虹闪烁 + 旋转（收缩/放松不旋转）
+      gemini: true  // Gemini 保持阶段：图标缩到最小，彩虹色带在内部横向滑动（收缩/放松不旋转）
       // gemini 维持原缩放动画，不做形态变化
     }
   };
@@ -835,29 +829,69 @@
     return d + "Z";
   }
 
-  // 当前主题是否启用旋转（ChatGPT 收缩/放松过程带旋转，Gemini 全程带旋转）
+  // 当前主题是否启用旋转（仅 ChatGPT 收缩/放松过程带旋转；Gemini 用 gemini 标志，不在此列）
   function themeSpins() {
     var t = THEMES[currentTheme];
     return !!(t && t.spin);
   }
 
-  // 当前主题是否为 Gemini（保持阶段触发彩虹闪烁）
+  // 当前主题是否为 Gemini（保持阶段触发彩虹色带滑动）
   function themeIsGemini() {
     var t = THEMES[currentTheme];
     return !!(t && t.gemini);
   }
 
-  // 切换 Gemini 保持阶段的彩虹闪烁动画
+  // Gemini 保持阶段：在缩到最小的图标内部叠加「彩虹色带斜向滑动」效果。
+  // 色带由 SVG <linearGradient>（geminiRainbow）提供：在 0–1024 的 viewBox 中，
+  // 渐变方向取 45°（x、y 各延伸 BAND_PERIOD），spreadMethod=repeat 沿对角平铺；
+  // 用 <animateTransform> 沿同一对角线方向平移一个周期（−BAND_PERIOD,−BAND_PERIOD→0,0），
+  // 即可让色带无缝循环斜向滑动。reducedMotion 时不平移，显示静态彩虹。
+  // 色板刻意降低饱和度、提亮，营造柔和低对比的彩虹观感。
+  var BAND_PERIOD = 512;
+  var geminiBandAnim = reducedMotion
+    ? ''
+    : '<animateTransform class="gemini-band-anim" attributeName="gradientTransform" type="translate" ' +
+      'from="-' + BAND_PERIOD + ' -' + BAND_PERIOD + '" to="0 0" dur="2.4s" repeatCount="indefinite"/>';
+  var geminiRainbowDefs =
+    '<defs>' +
+      '<linearGradient id="geminiRainbow" x1="0" y1="0" x2="' + BAND_PERIOD + '" y2="' + BAND_PERIOD + '" gradientUnits="userSpaceOnUse" spreadMethod="repeat">' +
+        '<stop offset="0"    stop-color="#f4a3a3"/>' +
+        '<stop offset="0.17" stop-color="#f5c79a"/>' +
+        '<stop offset="0.34" stop-color="#f3e29b"/>' +
+        '<stop offset="0.50" stop-color="#a9dcb3"/>' +
+        '<stop offset="0.67" stop-color="#9ec9e6"/>' +
+        '<stop offset="0.84" stop-color="#b9a6e0"/>' +
+        '<stop offset="1"    stop-color="#e6a3c6"/>' +
+        geminiBandAnim +
+      '</linearGradient>' +
+    '</defs>';
+
+
+
+  // 切换 Gemini 保持阶段的彩虹色带滑动
   function setGeminiHold(on) {
-    var orbit = guideIcon.parentElement; // .icon-orbit
-    if (!orbit) return;
-    orbit.classList.toggle("gemini-hold", on);
+    var pathEl = guideIcon.querySelector("path");
+    if (pathEl) {
+      if (on) {
+        // 首次开启时注入渐变定义（含 <defs>），后续仅切换 fill
+        if (!guideIcon.querySelector("#geminiRainbow")) {
+          guideIcon.insertAdjacentHTML("afterbegin", geminiRainbowDefs);
+        }
+        pathEl.setAttribute("fill", "url(#geminiRainbow)");
+        guideIcon.classList.add("gemini-rainbow");
+      } else {
+        pathEl.setAttribute("fill", THEMES[currentTheme].iconFill);
+        guideIcon.classList.remove("gemini-rainbow");
+      }
+    }
   }
-  // 暂停/恢复 Gemini 彩虹动画
+  // 暂停/恢复 Gemini 彩虹色带动画
   function pauseGeminiHold(paused) {
-    var orbit = guideIcon.parentElement; // .icon-orbit
-    if (!orbit) return;
-    orbit.classList.toggle("gemini-paused", paused);
+    if (paused) {
+      if (typeof guideIcon.pauseAnimations === "function") guideIcon.pauseAnimations();
+    } else {
+      if (typeof guideIcon.unpauseAnimations === "function") guideIcon.unpauseAnimations();
+    }
   }
 
   // 设置图标进度 p：0 = 完全放松(图标原形)，1 = 完全收紧
@@ -888,7 +922,7 @@
         : "scale(" + (m * pulseScale).toFixed(4) + ")";
     } else {
       // 纯缩放主题（chatgpt 缩放+旋转，gemini 仅缩放）
-      var s = SCALE_MAX - (SCALE_MAX - SCALE_MIN) * p;
+      var s = (SCALE_MAX - (SCALE_MAX - SCALE_MIN) * p) * pulseScale;
       guideIcon.style.transform = rot
         ? "scale(" + s.toFixed(3) + ") rotate(" + rot.toFixed(2) + "deg)"
         : "scale(" + s.toFixed(3) + ")";
@@ -1020,7 +1054,7 @@
     else if (phase === "release")  { dur = m.release * 1000; stageLabel.textContent = "放松"; vibrate(30); }
     training.phaseEndsAt = Date.now() + dur;
     training.pausedRemaining = dur;
-    // Gemini 仅在保持阶段（图标缩到最小）触发彩虹闪烁
+    // Gemini 仅在保持阶段（图标缩到最小）触发彩虹色带滑动
     setGeminiHold(themeIsGemini() && phase === "hold");
     runLoop();
   }
@@ -1078,7 +1112,16 @@
             pulseScale = 1 + 0.2 * Math.sin(breaths * Math.PI * t);
           }
         } else {
-          rot = training.rotBase + 180; // 保持收缩末端的旋转角（仅 chatgpt 生效）
+          // ChatGPT 保持阶段：轻微缩放振荡 + 旋转抖动，避免静止
+          if (reducedMotion) {
+            rot = training.rotBase + 180;
+            pulseScale = 1;
+          } else {
+            var jScale = 1 + 0.10 * (Math.sin(7.3 * Math.PI * t) + Math.cos(11.1 * Math.PI * t)) * 0.5;
+            var jRot = 7.0 * (Math.sin(8.7 * Math.PI * t) + Math.cos(12.5 * Math.PI * t)) * 0.5;
+            pulseScale = jScale;
+            rot = training.rotBase + 180 + jRot;
+          }
         }
       } else if (phase === "release") {
         // 小点/星形 → 大，ease-out（先快放后舒缓）；morph 页展开段同样用 easeOut，故两类主题一致
